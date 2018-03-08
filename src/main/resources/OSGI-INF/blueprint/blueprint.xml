@@ -1,23 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:ext="http://aries.apache.org/blueprint/xmlns/blueprint-ext/v1.0.0"
            xmlns:jaxrs="http://cxf.apache.org/blueprint/jaxrs"
            xmlns:cxf="http://cxf.apache.org/blueprint/core"
+           xmlns:cxfrs="http://camel.apache.org/schema/blueprint/cxf"
            xsi:schemaLocation="
-                    http://www.osgi.org/xmlns/blueprint/v1.0.0
-                    https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd
-                    http://cxf.apache.org/blueprint/jaxrs http://cxf.apache.org/schemas/blueprint/jaxrs.xsd
-                    http://cxf.apache.org/blueprint/core http://cxf.apache.org/schemas/blueprint/core.xsd">
+              http://www.osgi.org/xmlns/blueprint/v1.0.0 http://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd
+              http://cxf.apache.org/blueprint/jaxrs http://cxf.apache.org/schemas/blueprint/jaxrs.xsd
+              http://camel.apache.org/schema/blueprint/cxf http://camel.apache.org/schema/blueprint/cxf/camel-cxf.xsd
+              http://cxf.apache.org/blueprint/core http://cxf.apache.org/schemas/blueprint/core.xsd">
 
-    <jaxrs:server id="clienteService" address="/cliente">
-        <jaxrs:serviceBeans>
-            <bean class="pruebas.ClienteService" />
-        </jaxrs:serviceBeans>
-        <jaxrs:providers>
-            <bean class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider">
-            </bean>
-        </jaxrs:providers>
-    </jaxrs:server>
+
+    <cxfrs:rsServer id="rsServer" address="/ssh" loggingFeatureEnabled="true" loggingSizeLimit="20" >
+        <cxfrs:serviceBeans>
+            <bean class="pruebas.SshService" />
+        </cxfrs:serviceBeans>
+        <cxfrs:providers>
+            <bean class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider"/>
+        </cxfrs:providers>
+    </cxfrs:rsServer>
 
     <cxf:bus>
         <cxf:features>
@@ -31,4 +33,35 @@
             <entry key="skip.default.json.provider.registration" value="true" />
         </cxf:properties>
     </cxf:bus>
+
+    <bean id="processor" class="pruebas.GenerateResponse"/>
+
+    <camelContext xmlns="http://camel.apache.org/schema/blueprint" id="edesur.prueba.ssh" useMDCLogging="true">
+        <dataFormats>
+            <json id="json" library="Jackson" prettyPrint="true" include="NON_NULL" />
+        </dataFormats>
+
+        <route id="invoke-ssh" trace="true" streamCache="true">
+            <from uri="cxfrs:bean:rsServer?bindingStyle=SimpleConsumer"/>
+            <!--
+            <setBody>
+                <constant>features:list&#10;</constant>
+            </setBody>
+            <to uri="ssh://admin:admin321@srvfuse01desa:8101"/>
+            -->
+            <setBody>
+                <constant>ls&#10;</constant>
+            </setBody>
+            <to uri="ssh://oromo:mauro08@t2t3desa?synchronous=true"/>
+            <log message="Resultado: ${body}" logName="edesur.prueba.ssh" />
+            <!--
+            <marshal>
+                <string />
+            </marshal>
+            <process ref="processor"/>
+            <convertBodyTo type="java.lang.String"/>
+            -->
+            <log message="XXX Fin: ${body}" logName="edesur.prueba.ssh" />
+        </route>
+    </camelContext>
 </blueprint>
